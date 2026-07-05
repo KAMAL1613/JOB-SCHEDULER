@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model dead_letter_queue {
+  id             BigInt    @id @default(autoincrement())
+  job_id         BigInt?   @unique
+  failure_reason String?
+  moved_at       DateTime? @default(now()) @db.Timestamp(6)
+  jobs           jobs?     @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model job_executions {
+  id               BigInt      @id @default(autoincrement())
+  job_id           BigInt?
+  worker_id        BigInt?
+  start_time       DateTime?   @db.Timestamp(6)
+  end_time         DateTime?   @db.Timestamp(6)
+  execution_status job_status?
+  duration_ms      BigInt?
+  jobs             jobs?       @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  workers          workers?    @relation(fields: [worker_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  job_logs         job_logs[]
+}
+
+model job_logs {
+  id             BigInt          @id @default(autoincrement())
+  execution_id   BigInt?
+  log_level      String?         @db.VarChar(20)
+  message        String?
+  created_at     DateTime?       @default(now()) @db.Timestamp(6)
+  job_executions job_executions? @relation(fields: [execution_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model jobs {
+  id                BigInt             @id @default(autoincrement())
+  queue_id          BigInt?
+  job_name          String?            @db.VarChar(150)
+  payload           Json?
+  status            job_status?        @default(QUEUED)
+  priority          Int?
+  scheduled_time    DateTime?          @db.Timestamp(6)
+  retry_count       Int?               @default(0)
+  created_at        DateTime?          @default(now()) @db.Timestamp(6)
+  dead_letter_queue dead_letter_queue?
+  job_executions    job_executions[]
+  queues            queues?            @relation(fields: [queue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  scheduled_jobs    scheduled_jobs?
+
+  @@index([queue_id, status], map: "idx_jobs_queue_status")
+}
+
+model organizations {
+  id          BigInt     @id @default(autoincrement())
+  owner_id    BigInt?
+  name        String     @db.VarChar(150)
+  description String?
+  created_at  DateTime?  @default(now()) @db.Timestamp(6)
+  users       users?     @relation(fields: [owner_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  projects    projects[]
+}
+
+model projects {
+  id              BigInt         @id @default(autoincrement())
+  organization_id BigInt?
+  name            String         @db.VarChar(150)
+  description     String?
+  created_at      DateTime?      @default(now()) @db.Timestamp(6)
+  organizations   organizations? @relation(fields: [organization_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  queues          queues[]
+
+  @@index([organization_id], map: "idx_projects_org")
+}
+
+model queues {
+  id                BigInt          @id @default(autoincrement())
+  project_id        BigInt?
+  retry_policy_id   BigInt?
+  queue_name        String?         @db.VarChar(150)
+  priority          Int?
+  concurrency_limit Int?
+  status            queue_status?   @default(ACTIVE)
+  jobs              jobs[]
+  projects          projects?       @relation(fields: [project_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  retry_policies    retry_policies? @relation(fields: [retry_policy_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([project_id], map: "idx_queues_project")
+}
+
+model retry_policies {
+  id                    BigInt      @id @default(autoincrement())
+  policy_name           String?     @db.VarChar(100)
+  retry_strategy        retry_type?
+  max_retries           Int?
+  initial_delay_seconds Int?
+  backoff_multiplier    Decimal?    @db.Decimal(5, 2)
+  queues                queues[]
+}
+
+model scheduled_jobs {
+  id              BigInt    @id @default(autoincrement())
+  job_id          BigInt?   @unique
+  cron_expression String?   @db.VarChar(100)
+  next_run        DateTime? @db.Timestamp(6)
+  jobs            jobs?     @relation(fields: [job_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id            BigInt          @id @default(autoincrement())
+  full_name     String          @db.VarChar(100)
+  email         String          @unique @db.VarChar(150)
+  password_hash String          @db.VarChar(255)
+  role          user_role?      @default(MEMBER)
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  organizations organizations[]
+
+  @@index([email], map: "idx_users_email")
+}
+
+model worker_heartbeats {
+  id             BigInt    @id @default(autoincrement())
+  worker_id      BigInt?
+  heartbeat_time DateTime? @default(now()) @db.Timestamp(6)
+  workers        workers?  @relation(fields: [worker_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model workers {
+  id                BigInt              @id @default(autoincrement())
+  worker_name       String?             @db.VarChar(100)
+  host_name         String?             @db.VarChar(100)
+  status            worker_status?      @default(ONLINE)
+  started_at        DateTime?           @default(now()) @db.Timestamp(6)
+  job_executions    job_executions[]
+  worker_heartbeats worker_heartbeats[]
+}
+
+enum job_status {
+  QUEUED
+  SCHEDULED
+  CLAIMED
+  RUNNING
+  COMPLETED
+  FAILED
+  DEAD_LETTER
+}
+
+enum queue_status {
+  ACTIVE
+  PAUSED
+}
+
+enum retry_type {
+  FIXED
+  LINEAR
+  EXPONENTIAL
+}
+
+enum user_role {
+  ADMIN
+  MEMBER
+}
+
+enum worker_status {
+  ONLINE
+  OFFLINE
+  BUSY
+}
