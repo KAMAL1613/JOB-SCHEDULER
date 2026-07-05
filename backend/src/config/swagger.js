@@ -4,7 +4,7 @@ const options = {
     definition: {
         openapi: "3.0.0",
         info: {
-            title: "OrbitFlow Distributed Job Scheduler API",
+            title: "JOB SCHEDULER Distributed Job Scheduler API",
             version: "1.0.0",
             description: "Production-ready background job scheduling platform API documentation.",
             contact: {

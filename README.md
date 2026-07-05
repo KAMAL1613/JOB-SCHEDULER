@@ -1,6 +1,6 @@
-# OrbitFlow: Distributed Job Scheduler
+# JOB SCHEDULER: Distributed Job Scheduler
 
-OrbitFlow is a production-inspired, highly reliable, and clean distributed job scheduling platform. It executes asynchronous background jobs concurrently across multiple workers, supporting immediate, delayed, scheduled, recurring (cron), and batch jobs. 
+JOB SCHEDULER is a production-inspired, highly reliable, and clean distributed job scheduling platform. It executes asynchronous background jobs concurrently across multiple workers, supporting immediate, delayed, scheduled, recurring (cron), and batch jobs. 
 
 This project is built as a submission for the backend engineering internship assignment.
 

@@ -31,7 +31,7 @@ export default function Navbar({ user, onLogout }) {
                             <Layers className="h-5 w-5 animate-pulse" />
                         </div>
                         <span className="font-bold text-xl bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent tracking-tight">
-                            OrbitFlow
+                            JOB SCHEDULER
                         </span>
                         <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-100">
                             v1.0
